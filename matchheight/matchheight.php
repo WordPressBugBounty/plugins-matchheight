@@ -1,195 +1,195 @@
-<?php     namespace ng_matchheight;
-
-/*
-Plugin Name: matchHeight
-Plugin URI: http://wpbeaches.com/
-Description: Adds the matchHeight jQuery plugin which makes the height of all selected elements exactly equal
-Author: Neil Gee
-Version: 1.2.0
-Author URI: http://wpbeaches.com
-Text Domain: matchheight
-Domain Path: /languages/
-@package    matchheight
-@author     Neil Gee
-@since      1.0.0
-@license    GPL-2.0+
-*/
-
-
-// If called direct, refuse
-  if ( ! defined( 'ABSPATH' ) ) {
-          die;
-  }
-
-/* Assign global variables */
-
-$plugin_url = WP_PLUGIN_URL . '/matchheight';
-$options = array();
-
+<?php
 /**
- * Register our text domain.
+ * Plugin Name:       matchHeight
+ * Plugin URI:        https://wpbeaches.com/
+ * Description:       Makes selected elements equal in height using the jQuery matchHeight library.
+ * Version:           1.2.1
+ * Requires at least: 5.8
+ * Requires PHP:      7.2
+ * Author:            Neil Gee
+ * Author URI:        https://wpbeaches.com/
+ * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       matchheight
+ * Domain Path:       /languages
  *
- * @since 1.0.0
+ * @package MatchHeight
  */
 
+namespace ng_matchheight;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+const VERSION = '1.2.1';
+
+/**
+ * Load plugin translations.
+ *
+ * @return void
+ */
 function load_textdomain() {
-  load_plugin_textdomain( 'matchheight', false, basename( dirname( __FILE__ ) ) . '/languages' );
+	load_plugin_textdomain( 'matchheight', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 }
-add_action( 'plugins_loaded', __NAMESPACE__ . '\\load_textdomain' );
+add_action( 'init', __NAMESPACE__ . '\\load_textdomain' );
 
 /**
- * Register and Enqueue Scripts and Styles
+ * Enqueue matchHeight when at least one selector has been configured.
  *
- * @since 1.0.0
+ * @return void
  */
+function enqueue_scripts() {
+	$options  = get_option( 'matchheight_settings', array() );
+	$selector = isset( $options['mh_selectors'] ) ? trim( (string) $options['mh_selectors'] ) : '';
 
-//Script-tac-ulous -> All the Scripts and Styles Registered and Enqueued
-function scripts_styles() {
+	if ( '' === $selector ) {
+		return;
+	}
 
-  $options = get_option( 'matchheight_settings' );
+	wp_enqueue_script(
+		'matchheight',
+		plugins_url( 'js/jquery.matchHeight-min.js', __FILE__ ),
+		array( 'jquery' ),
+		'0.7.2',
+		true
+	);
 
-  if( isset($options['mh_selectors'] )) {
+	wp_enqueue_script(
+		'matchheight-init',
+		plugins_url( 'js/matchHeight-init.js', __FILE__ ),
+		array( 'matchheight' ),
+		VERSION,
+		true
+	);
 
-	wp_register_script( 'matchheight', plugins_url( '/js/jquery.matchHeight-min.js', __FILE__ ), array( 'jquery' ), '0.7.0', true );
-	wp_register_script( 'matchheight-init', plugins_url( '/js/matchHeight-init.js',  __FILE__ ), array( 'matchheight' ), '1.0.0', true );
-
-	wp_enqueue_script( 'matchheight' );
-
-     $data = array (
-
-      'mh_inner_array' => array(
-
-          'mh_selectors'  => $options['mh_selectors'], // this the selectors field
-
-      ),
-  );
-
-    // Pass PHP variables to jQuery script
-    wp_localize_script( 'matchheight-init', 'matchVars', $data );
-
-    wp_enqueue_script( 'matchheight-init' );
-  }
-
-
-
+	wp_add_inline_script(
+		'matchheight-init',
+		'window.matchHeightSettings = ' . wp_json_encode( array( 'selector' => $selector ) ) . ';',
+		'before'
+	);
 }
-
-add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\\scripts_styles' );
+add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\\enqueue_scripts' );
 
 /**
- * Register our option fields
+ * Register plugin settings and fields.
  *
- * @since 1.0.0
+ * @return void
  */
+function register_settings() {
+	register_setting(
+		'mh_settings_group',
+		'matchheight_settings',
+		array(
+			'type'              => 'array',
+			'sanitize_callback' => __NAMESPACE__ . '\\sanitize_settings',
+			'default'           => array( 'mh_selectors' => '' ),
+		)
+	);
 
-function plugin_settings(){
-  register_Setting(
-        'mh_settings-group', //option name
-        'matchheight_settings',// option group setting name and option name
-        __NAMESPACE__ . '\\matchheight_validate_input' //sanitize the inputs
-  );
+	add_settings_section(
+		'mh_matchheight_section',
+		__( 'matchHeight settings', 'matchheight' ),
+		'__return_false',
+		'matchheight'
+	);
 
-  add_settings_section(
-        'mh_matchheight_section', //declare the section id
-        'matchHeight Settings', //page title
-         __NAMESPACE__ . '\\mh_matchheight_section_callback', //callback function below
-        'matchheight' //page that it appears on
-
-    );
-  add_settings_field(
-        'mh_selectors', //unique id of field
-        'Add Element Selectors', //title
-         __NAMESPACE__ . '\\mh_selectors_callback', //callback function below
-        'matchheight', //page that it appears on
-        'mh_matchheight_section' //settings section declared in add_settings_section
-    );
+	add_settings_field(
+		'mh_selectors',
+		__( 'Element selectors', 'matchheight' ),
+		__NAMESPACE__ . '\\render_selectors_field',
+		'matchheight',
+		'mh_matchheight_section'
+	);
 }
-add_action('admin_init', __NAMESPACE__ . '\\plugin_settings');
-
-
+add_action( 'admin_init', __NAMESPACE__ . '\\register_settings' );
 
 /**
- * Sanitize our inputs
+ * Sanitize plugin settings.
  *
- * @since 1.0.0
+ * CSS selector syntax is deliberately not restricted to classes and IDs;
+ * attribute selectors, combinators, and pseudo-selectors are also valid.
+ *
+ * @param mixed $input Submitted setting value.
+ * @return array
  */
+function sanitize_settings( $input ) {
+	$output = array( 'mh_selectors' => '' );
 
-function matchheight_validate_input( $input ) {
-   // Create our array for storing the validated options
-    $output = array();
+	if ( is_array( $input ) && isset( $input['mh_selectors'] ) && is_string( $input['mh_selectors'] ) ) {
+		$output['mh_selectors'] = sanitize_text_field( wp_unslash( $input['mh_selectors'] ) );
+	}
 
-    // Loop through each of the incoming options
-    foreach( $input as $key => $value ) {
-
-        // Check to see if the current option has a value. If so, process it.
-        if( isset( $input[$key] ) ) {
-
-            // Strip all HTML and PHP tags and properly handle quoted strings
-            $output[$key] = strip_tags( stripslashes( $input[ $key ] ) );
-
-        } // end if
-
-
-    } // end foreach
-
-    // Return the array processing any additional functions filtered by this action
-    return apply_filters( 'matchheight_validate_input' , $output, $input );
-}
-
-function mh_matchheight_section_callback() {
-
+	return $output;
 }
 
 /**
- * Register Our Input to select elements fot equal height
+ * Render the selector setting.
  *
- * @since 1.0.0
+ * @return void
  */
-
-function mh_selectors_callback() {
-$options = get_option( 'matchheight_settings' );
-
-if( !isset( $options['mh_selectors'] ) ) $options['mh_selectors'] = '';
-echo '<input type="text" id="mh_selectors" name="matchheight_settings[mh_selectors]" value="' . sanitize_text_field($options['mh_selectors']) . '" placeholder="Add element CSS Class or ID to equal in height" class="large-text" />';
-echo '<span class="description">' . esc_attr_e ( 'Add elements CSS Class or ID to be equal in height, comma separate multiple elements','matchheight') . '</span>';
+function render_selectors_field() {
+	$options  = get_option( 'matchheight_settings', array() );
+	$selector = isset( $options['mh_selectors'] ) ? (string) $options['mh_selectors'] : '';
+	?>
+	<input
+		type="text"
+		id="mh_selectors"
+		name="matchheight_settings[mh_selectors]"
+		value="<?php echo esc_attr( $selector ); ?>"
+		placeholder="<?php echo esc_attr__( 'For example: .card, .feature', 'matchheight' ); ?>"
+		class="large-text"
+	/>
+	<p class="description">
+		<?php esc_html_e( 'Enter CSS selectors for the elements to equalize. Separate multiple selectors with commas.', 'matchheight' ); ?>
+	</p>
+	<?php
 }
-
 
 /**
- * Create the plugin option page.
+ * Register the settings page.
  *
- * @since 1.0.0
+ * @return void
  */
-
-function plugin_page() {
-
-    /*
-     * Use the add options_page function
-     * add_options_page( $page_title, $menu_title, $capability, $menu-slug, $function )
-     */
-
-     add_options_page(
-        __( 'matchHeight Options Plugin','matchheight' ), //$page_title
-        __( 'matchHeight', 'matchheight' ), //$menu_title
-        'manage_options', //$capability
-        'matchheight', //$menu-slug
-        __NAMESPACE__ . '\\plugin_options_page' //$function
-      );
+function add_settings_page() {
+	add_options_page(
+		__( 'matchHeight settings', 'matchheight' ),
+		__( 'matchHeight', 'matchheight' ),
+		'manage_options',
+		'matchheight',
+		__NAMESPACE__ . '\\render_settings_page'
+	);
 }
-add_action( 'admin_menu', __NAMESPACE__ . '\\plugin_page' );
+add_action( 'admin_menu', __NAMESPACE__ . '\\add_settings_page' );
 
 /**
- * Include the plugin option page.
+ * Render the settings page.
  *
- * @since 1.0.0
+ * @return void
  */
+function render_settings_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'matchheight' ) );
+	}
 
-function plugin_options_page() {
-
-    if( !current_user_can( 'manage_options' ) ) {
-
-      wp_die( "Hall and Oates 'Say No Go'" );
-    }
-
-   require( 'inc/options-page-wrapper.php' );
+	require plugin_dir_path( __FILE__ ) . 'inc/options-page-wrapper.php';
 }
+
+/**
+ * Add a direct Settings link on the Plugins screen.
+ *
+ * @param string[] $links Existing action links.
+ * @return string[]
+ */
+function add_action_links( $links ) {
+	$settings_link = sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( admin_url( 'options-general.php?page=matchheight' ) ),
+		esc_html__( 'Settings', 'matchheight' )
+	);
+
+	array_unshift( $links, $settings_link );
+
+	return $links;
+}
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), __NAMESPACE__ . '\\add_action_links' );

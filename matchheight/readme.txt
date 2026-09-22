@@ -1,67 +1,79 @@
-=== Plugin Name ===
+=== matchHeight ===
 
 Contributors: neilgee
-Donate link: http://wpbeaches.com/
-Tags: match, height, size
-Requires at least: 4.0
-Tested up to: 5.8
-Stable tag: 1.2.0
-Plugin Name: matchHeight
-Plugin URI: http://wpbeaches.com
-Description: matchheight makes the height of all selected elements exactly equal in height.
-Author: Neil Gowran
-Version: 1.1.0
-Author URI: http://wpbeaches.com/
-License: GPL-2.0+
-License URI: http://www.gnu.org/licenses/gpl-2.0.txt
+Donate link: https://wpbeaches.com/
+Tags: match, height, size, equal height
+Requires at least: 5.8
+Tested up to: 7.1
+Requires PHP: 7.2
+Stable tag: 1.2.1
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-This plugin adds the matchHeight jQuery plugin which makes the height of all selected elements exactly equal.
-
+Makes selected elements equal in height using the jQuery matchHeight library.
 
 == Description ==
 
-This plugin adds the matchHeight jQuery plugin which makes the height of all selected elements exactly equal.
+matchHeight loads the jQuery matchHeight library and applies it to the CSS selectors entered in the plugin settings.
 
-Just add the element selectors in the option settings.
+The plugin makes the height of all matched elements equal. It does not collect personal data, make external requests, or add front-end assets when no selectors are configured.
 
+= Usage =
 
+1. Go to Settings > matchHeight.
+2. Enter the CSS selectors for the elements you want to equalize.
+3. Separate multiple selectors with commas, for example: `.card, .feature`.
+4. Save the changes.
 
-
+The plugin is a WordPress wrapper for [jQuery matchHeight.js by Liam Brummitt](https://github.com/liabru/jquery-match-height).
 
 == Installation ==
 
-This section describes how to install the plugin:
+1. Upload the `matchheight` folder to the `/wp-content/plugins/` directory.
+2. Activate the plugin through the Plugins screen in WordPress.
+3. Go to Settings > matchHeight and add your selectors.
 
-1. Upload the `matchheight` folder to the `/wp-content/plugins/` directory
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Options are in Settings => matchHeight
+== Frequently Asked Questions ==
 
-== Usage ==
+= Does the plugin load scripts on every page? =
 
-The settings are found via the dashboard Settings > matchHeight
+The scripts load on the front end only when at least one selector has been saved in the settings.
 
-- Comma separate the HTML elements that you want to equal in height by adding in their CSS class or ID
+= Can I use selectors other than classes and IDs? =
 
-The plugin is essentially a wrapper for the excellent <a href="https://github.com/liabru/jquery-match-height">jQuery matchHeight.js by Liam Brummit</a>
-
+Yes. You can use any selector supported by jQuery, including attribute selectors and combinators.
 
 == Screenshots ==
 
-1. Where to add the element selectors
+1. The matchHeight settings screen.
 
 == Changelog ==
 
+= 1.2.1 =
+
+* Tested with WordPress 7.1.
+* Improved compatibility with current WordPress coding and security practices.
+* Corrected the bundled matchHeight library version used for browser cache busting.
+* Avoided loading front-end scripts when the selector setting is empty.
+* Improved settings sanitization, escaping, translations, and direct file-access protection.
+* Added graceful handling for invalid CSS selectors.
+* Added a Settings link on the Plugins screen.
+* Updated plugin metadata, documentation, and secure URLs.
+
 = 1.2.0 =
 
-* Upgraded to matchHeight core version 0.7.2
-06/7/17
+* Upgraded the matchHeight library to version 0.7.2.
 
 = 1.1.0 =
 
-* Upgraded to matchHeight core version 0.7.0
-09/01/16
+* Upgraded the matchHeight library to version 0.7.0.
 
 = 1.0.0 =
 
 * Initial release.
-09/11/15
+
+== Upgrade Notice ==
+
+= 1.2.1 =
+
+Maintenance and compatibility update for current WordPress versions. Existing selector settings are preserved.
